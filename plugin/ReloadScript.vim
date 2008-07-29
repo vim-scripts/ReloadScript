@@ -39,12 +39,20 @@
 "   issue a warning if it cannot find the inclusion guard variable. 
 "
 " TODO:
+"   - For compiler, ftplugin, indent and syntax scripts, find all buffers that
+"     have the script sourced and re-source in that buffer. Currently, one must
+"     manually :e! these buffers. 
 "
-" Copyright: (C) 2007 by Ingo Karkat
+" Copyright: (C) 2007-2008 by Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'. 
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 " REVISION	DATE		REMARKS 
+"   1.10.005	25-Jul-2008	Combined missing inclusion guard warning with
+"				reload message to avoid the "Hit ENTER" prompt. 
+"				No missing inclusion guard warning for scripts
+"				that do not need one (e.g. after-directory,
+"				autoload, ftplugin, indent, syntax, ...)
 "   1.10.004	28-Feb-2008	A scriptname argument with path and/or extension
 "				is sourced as-is. This allows a third usage:
 "				:ReloadScript <path/to/script.vim>
@@ -54,7 +62,7 @@
 "	0.01	14-Dec-2006	file creation
 
 " Avoid installing twice or when in compatible mode
-if exists("g:loaded_ReloadScript") || (v:version < 700)
+if exists('g:loaded_ReloadScript') || (v:version < 700)
     finish
 endif
 let g:loaded_ReloadScript = 1
@@ -66,11 +74,27 @@ function! s:RemoveInclusionGuard( scriptName )
     endif
     if exists( l:scriptInclusionGuard )
 	execute 'unlet ' . l:scriptInclusionGuard
+	return 1
     else
-	echohl WarningMsg
-	echomsg 'No inclusion guard variable found.'
-	echohl None
+	return 0
     endif
+endfunction
+
+let s:noGlobalInclusionGuardPattern = '^\%(autoload\|colors\|compiler\|ftplugin\|indent\|keymap\|lang\|syntax\)$'
+function! s:IsScriptTypeWithInclusionGuard( scriptFileSpec )
+    " Scripts that only modify the current buffer do not have a global inclusion
+    " guard (but should have a buffer-local one). 
+    " Autoload, color scheme, keymap and language scripts do not need an
+    " inclusion guard. 
+    " Scripts in the after-directory do not need an inclusion guard. 
+    let l:scriptDir = fnamemodify( a:scriptFileSpec, ':p:h:t' )
+    " Because VIM supports both .vim/ftplugin/filetype_*.vim and
+    " .vim/ftplugin/filetype/*.vim, we need to check the two directories
+    " upwards. 
+    let l:scriptParentDir = fnamemodify( a:scriptFileSpec, ':p:h:h:t' )
+    let l:scriptParentParentDir = fnamemodify( a:scriptFileSpec, ':p:h:h:h:t' )
+
+    return ! (l:scriptDir =~? s:noGlobalInclusionGuardPattern || l:scriptParentDir =~? s:noGlobalInclusionGuardPattern || l:scriptParentDir =~? '^after$' || l:scriptParentParentDir =~? '^after$')
 endfunction
 
 function! s:ReloadScript(...)
@@ -80,6 +104,7 @@ function! s:ReloadScript(...)
 	let l:scriptName = expand('%:t:r')
 	let l:scriptFilespec = expand('%')
 	let l:sourceCommand = 'source'
+	let l:canContainInclusionGuard = s:IsScriptTypeWithInclusionGuard(l:scriptFilespec)
     else
 	let l:scriptName = fnamemodify( a:1, ':t:r' ) " Strip off file path and extension. 
 	if l:scriptName == a:1
@@ -93,12 +118,19 @@ function! s:ReloadScript(...)
 	    let l:scriptFilespec = a:1
 	    let l:sourceCommand = 'source'
 	endif
+	let l:canContainInclusionGuard = 1
     endif
 
-    call s:RemoveInclusionGuard( l:scriptName )
+    let l:isRemovedInclusionGuard = s:RemoveInclusionGuard( l:scriptName )
 
     execute l:sourceCommand . ' ' . l:scriptFilespec
-    echomsg 'Reloaded "' . l:scriptFilespec . '"'
+    if ! l:canContainInclusionGuard || l:isRemovedInclusionGuard
+	echomsg 'Reloaded "' . l:scriptFilespec . '"'
+    else
+	echohl WarningMsg
+	echomsg 'Reloaded "' . l:scriptFilespec . '"; no inclusion guard variable found.'
+	echohl None
+    endif
 endfunction
 
 "command! -nargs=1 -complete=file ReloadScript if exists("g:loaded_<args>") | unlet g:loaded_<args> | endif | runtime plugin/<args>.vim
