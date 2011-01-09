@@ -1,0 +1,106 @@
+*ReloadScript.txt*      Reload a Vim script during script development. 
+
+		       RELOAD SCRIPT    by Ingo Karkat
+							    *ReloadScript.vim*
+description			|ReloadScript-description|
+usage				|ReloadScript-usage|
+installation			|ReloadScript-installation|
+limitations			|ReloadScript-limitations|
+known problems			|ReloadScript-known-problems|
+todo				|ReloadScript-todo|
+history				|ReloadScript-history|
+
+==============================================================================
+DESCRIPTION					    *ReloadScript-description*
+
+Re-sources a Vim script. The script may use a multiple inclusion guard
+variable g:loaded_{scriptname} (with {scriptname} having either the same case
+as specified or all lowercase.) 
+If you specify the bare scriptname (without .vim extension), the script must
+reside in $VIMRUNTIME/plugin/{scriptname}.vim. Otherwise, the passed filespec
+is interpreted as the file system location of a Vim script and sourced as-is. 
+If you execute :ReloadScript without passing a scriptname, the current buffer
+is re-sourced. 
+
+RELATED WORKS								     *
+
+==============================================================================
+USAGE							  *ReloadScript-usage*
+							       *:ReloadScript*
+ReloadScript				Re-sources the current buffer. 
+ReloadScript {scriptname}		Re-sources the passed plugin script. 
+ReloadScript {path/to/script.vim}	Re-sources the passed file. 
+
+==============================================================================
+INSTALLATION					   *ReloadScript-installation*
+
+This script is packaged as a |vimball|. If you have the "gunzip" decompressor
+in your PATH, simply edit the *.vba.gz package in Vim; otherwise, decompress
+the archive first, e.g. using WinZip. Inside Vim, install by sourcing the
+vimball or via the |:UseVimball| command. >
+    vim ReloadScript.vba.gz
+    :so %
+To uninstall, use the |:RmVimball| command. 
+
+DEPENDENCIES					   *ReloadScript-dependencies*
+
+- Requires Vim 7.0 or higher. 
+
+==============================================================================
+LIMITATIONS					    *ReloadScript-limitations*
+
+- The script cannot reload itself :-)
+
+ASSUMPTIONS					    *ReloadScript-assumptions*
+Not every script supports reloading. There may be error messages like
+"function already exists". To support reloading, the script should use the
+bang (!) variants of :function! and :command!, which will automatically
+override already existing elements. 
+
+Ensure that the script uses a multiple inclusion guard variable that conforms
+to the conventions mentioned above. The :ReloadScript command will issue a
+warning if it cannot find the inclusion guard variable. 
+
+KNOWN PROBLEMS					 *ReloadScript-known-problems*
+
+TODO							   *ReloadScript-todo*
+
+IDEAS							  *ReloadScript-ideas*
+
+- For compiler, ftplugin, indent and syntax scripts, find all buffers that
+  have the script sourced and re-source in that buffer. Currently, one must
+  manually :e! these buffers. 
+
+==============================================================================
+HISTORY							*ReloadScript-history*
+
+1.20	07-Jan-2011
+- BUG: Avoiding "E471: Argument required" error on empty buffer name. 
+- ENH: Explicitly checking for the existence of the file, as we don't want to
+  put the :source command inside try...catch (it would stop showing all
+  resulting errors and show only the first), and because :runtime doesn't
+  complain at all. 
+- Added separate help file and packaging the plugin as a vimball. 
+
+1.10	25-Jul-2008
+Combined missing inclusion guard warning with reload message to avoid the "Hit
+ENTER" prompt. No missing inclusion guard warning for scripts that do not need
+one (e.g. after-directory, autoload, ftplugin, indent, syntax, ...)
+
+1.10	28-Feb-2008
+A scriptname argument with path and/or extension is sourced as-is. This allows
+a third usage: :ReloadScript {path/to/script.vim}
+
+1.00	22-May-2007
+First published version. 
+
+0.01	14-Dec-2006
+Started development. 
+
+==============================================================================
+Copyright: (C) 2007-2011 Ingo Karkat
+The VIM LICENSE applies to this script; see |copyright|. 
+
+Maintainer:	Ingo Karkat <ingo@karkat.de>
+==============================================================================
+ vim:tw=78:ts=8:ft=help:norl:
